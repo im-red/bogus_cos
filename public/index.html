@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bogus COS Portal</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px 20px;
+      margin-bottom: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    header h1 {
+      font-size: 2em;
+      margin-bottom: 5px;
+    }
+
+    header p {
+      opacity: 0.9;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .card h2 {
+      color: #667eea;
+      margin-bottom: 15px;
+      font-size: 1.3em;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 10px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+    }
+
+    .stat-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2em;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 0.9em;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      margin: 5px;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5a6fd6;
+    }
+
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+
+    .btn-success {
+      background: #27ae60;
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: #219a52;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .token-display {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: monospace;
+      word-break: break-all;
+      margin: 10px 0;
+    }
+
+    .token-item {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 6px;
+      margin: 5px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .token-info {
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background: #f8f9fa;
+      font-weight: 600;
+    }
+
+    tr:hover {
+      background: #f8f9fa;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .badge-blue {
+      background: #e3f2fd;
+      color: #1976d2;
+    }
+
+    .badge-green {
+      background: #e8f5e9;
+      color: #388e3c;
+    }
+
+    .badge-red {
+      background: #ffebee;
+      color: #d32f2f;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .file-upload {
+      border: 2px dashed #ddd;
+      padding: 30px;
+      text-align: center;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .file-upload:hover {
+      border-color: #667eea;
+      background: #f8f9fa;
+    }
+
+    .file-upload.dragover {
+      border-color: #667eea;
+      background: #f0f4ff;
+    }
+
+    .alert {
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+    }
+
+    .alert-success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .alert-error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .breadcrumb {
+      padding: 10px 0;
+      margin-bottom: 15px;
+    }
+
+    .breadcrumb a {
+      color: #667eea;
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    pre {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>Bogus COS Portal</h1>
+      <p>Manage your mock COS storage</p>
+    </header>
+
+    <div id="alert-container"></div>
+
+    <div class="card">
+      <h2>Server Statistics</h2>
+      <div class="stats-grid" id="stats">
+        <div class="stat-item">
+          <div class="stat-value" id="stat-tenants">-</div>
+          <div class="stat-label">Tenants</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-buckets">-</div>
+          <div class="stat-label">Buckets</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-objects">-</div>
+          <div class="stat-label">Objects</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>Authentication</h2>
+        <div id="current-token" class="hidden">
+          <p><strong>Current Token:</strong></p>
+          <div class="token-display" id="token-display"></div>
+          <p><strong>Tenant ID:</strong> <span id="tenant-display"></span></p>
+          <button class="btn btn-danger btn-sm" onclick="clearToken()">Clear Token</button>
+        </div>
+        <div id="no-token">
+          <p>No token set. Generate or enter a token to manage storage.</p>
+          <button class="btn btn-primary" onclick="generateToken()">Generate New Token</button>
+          <p style="margin-top: 15px;">Or enter an existing token:</p>
+          <input type="text" id="manual-token" placeholder="Enter token...">
+          <button class="btn btn-primary" onclick="setManualToken()">Set Token</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Active Tokens</h2>
+        <div id="tokens-list"></div>
+        <button class="btn btn-primary btn-sm" onclick="loadTokens()" style="margin-top: 10px;">Refresh List</button>
+      </div>
+    </div>
+
+    <div class="card" id="bucket-section">
+      <h2>Buckets</h2>
+      <div class="breadcrumb" id="breadcrumb"></div>
+      <div id="buckets-content">
+        <p class="alert alert-error" id="no-auth-message">Please set a token first to view buckets.</p>
+      </div>
+    </div>
+
+    <div class="card hidden" id="object-section">
+      <h2>Objects in <span id="current-bucket"></span></h2>
+      <div id="objects-content"></div>
+    </div>
+
+    <div class="card hidden" id="upload-section">
+      <h2>Upload Object</h2>
+      <input type="text" id="upload-key" placeholder="Object key (e.g., folder/file.txt)">
+      <div class="file-upload" id="drop-zone">
+        <p>Drag & drop a file here or click to select</p>
+        <input type="file" id="file-input" style="display: none;">
+      </div>
+      <p id="selected-file" style="margin-top: 10px;"></p>
+      <button class="btn btn-success" onclick="uploadFile()" id="upload-btn" disabled>Upload</button>
+    </div>
+  </div>
+
+  <script>
+    let currentToken = localStorage.getItem('bogus_cos_token');
+    let currentTenantId = localStorage.getItem('bogus_cos_tenant_id');
+    let currentBucket = null;
+    let selectedFile = null;
+
+    const API_BASE = window.location.origin;
+
+    function showAlert(message, type = 'success') {
+      const container = document.getElementById('alert-container');
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      container.appendChild(alert);
+      setTimeout(() => alert.remove(), 5000);
+    }
+
+    async function api(path, options = {}) {
+      const headers = options.headers || {};
+      if (currentToken) {
+        headers['Authorization'] = `Bearer ${currentToken}`;
+      }
+      const response = await fetch(API_BASE + path, { ...options, headers });
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return { status: response.status, data: await response.json() };
+      }
+      return { status: response.status, data: await response.text() };
+    }
+
+    async function loadStats() {
+      try {
+        const { data } = await api('/__stats');
+        document.getElementById('stat-tenants').textContent = data.tenants;
+        document.getElementById('stat-buckets').textContent = data.totalBuckets;
+        document.getElementById('stat-objects').textContent = data.totalObjects;
+      } catch (e) {
+        console.error('Failed to load stats:', e);
+      }
+    }
+
+    async function generateToken() {
+      try {
+        const { data } = await api('/__auth/token', { method: 'POST' });
+        currentToken = data.token;
+        currentTenantId = data.tenantId;
+        localStorage.setItem('bogus_cos_token', currentToken);
+        localStorage.setItem('bogus_cos_tenant_id', currentTenantId);
+        updateTokenDisplay();
+        loadBuckets();
+        showAlert('Token generated successfully!');
+      } catch (e) {
+        showAlert('Failed to generate token: ' + e.message, 'error');
+      }
+    }
+
+    function setManualToken() {
+      const token = document.getElementById('manual-token').value.trim();
+      if (!token) {
+        showAlert('Please enter a token', 'error');
+        return;
+      }
+      currentToken = token;
+      localStorage.setItem('bogus_cos_token', currentToken);
+      updateTokenDisplay();
+      loadBuckets();
+    }
+
+    function clearToken() {
+      currentToken = null;
+      currentTenantId = null;
+      currentBucket = null;
+      localStorage.removeItem('bogus_cos_token');
+      localStorage.removeItem('bogus_cos_tenant_id');
+      updateTokenDisplay();
+      document.getElementById('buckets-content').innerHTML = '<p class="alert alert-error">Please set a token first to view buckets.</p>';
+      document.getElementById('object-section').classList.add('hidden');
+      document.getElementById('upload-section').classList.add('hidden');
+      document.getElementById('breadcrumb').innerHTML = '';
+    }
+
+    function updateTokenDisplay() {
+      const hasToken = !!currentToken;
+      document.getElementById('current-token').classList.toggle('hidden', !hasToken);
+      document.getElementById('no-token').classList.toggle('hidden', hasToken);
+      if (hasToken) {
+        document.getElementById('token-display').textContent = currentToken;
+        document.getElementById('tenant-display').textContent = currentTenantId || 'Unknown';
+      }
+    }
+
+    async function loadTokens() {
+      try {
+        const { data } = await api('/__auth/tokens');
+        const container = document.getElementById('tokens-list');
+        if (data.tokens.length === 0) {
+          container.innerHTML = '<p>No active tokens</p>';
+          return;
+        }
+        container.innerHTML = data.tokens.map(t => `
+          <div class="token-item">
+            <div class="token-info">
+              <div>Token: <code>${t.token}</code></div>
+              <div>Tenant: <code>${t.tenantId}</code></div>
+              <div>Created: ${new Date(t.createdAt).toLocaleString()}</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="useToken('${t.token}', '${t.tenantId}')">Use</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Failed to load tokens:', e);
+      }
+    }
+
+    function useToken(token, tenantId) {
+      currentToken = token;
+      currentTenantId = tenantId;
+      currentBucket = null;
+      localStorage.setItem('bogus_cos_token', token);
+      localStorage.setItem('bogus_cos_tenant_id', tenantId);
+      updateTokenDisplay();
+      document.getElementById('object-section').classList.add('hidden');
+      document.getElementById('upload-section').classList.add('hidden');
+      document.getElementById('breadcrumb').innerHTML = '';
+      loadBuckets();
+      showAlert('Token activated!');
+    }
+
+    async function loadBuckets() {
+      if (!currentToken) return;
+
+      try {
+        const { status, data } = await api('/');
+        if (status !== 200) {
+          document.getElementById('buckets-content').innerHTML = '<p class="alert alert-error">Failed to load buckets</p>';
+          return;
+        }
+
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(data, 'text/xml');
+        const buckets = xml.querySelectorAll('Bucket');
+
+        if (buckets.length === 0) {
+          document.getElementById('buckets-content').innerHTML = `
+            <p>No buckets found. Create one to get started.</p>
+            <div style="margin-top: 15px;">
+              <input type="text" id="new-bucket-name" placeholder="Bucket name">
+              <button class="btn btn-primary" onclick="createBucket()">Create Bucket</button>
+            </div>
+          `;
+          return;
+        }
+
+        let html = '<table><thead><tr><th>Bucket Name</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+        buckets.forEach(bucket => {
+          const name = bucket.querySelector('Name').textContent;
+          const date = bucket.querySelector('CreationDate').textContent;
+          html += `
+            <tr>
+              <td><a href="#" onclick="openBucket('${name}'); return false;">${name}</a></td>
+              <td>${new Date(date).toLocaleString()}</td>
+              <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteBucket('${name}')">Delete</button>
+              </td>
+            </tr>
+          `;
+        });
+        html += '</tbody></table>';
+        html += `
+          <div style="margin-top: 15px;">
+            <input type="text" id="new-bucket-name" placeholder="New bucket name">
+            <button class="btn btn-primary" onclick="createBucket()">Create Bucket</button>
+          </div>
+        `;
+        document.getElementById('buckets-content').innerHTML = html;
+      } catch (e) {
+        console.error('Failed to load buckets:', e);
+        document.getElementById('buckets-content').innerHTML = '<p class="alert alert-error">Failed to load buckets</p>';
+      }
+    }
+
+    async function createBucket() {
+      const name = document.getElementById('new-bucket-name').value.trim();
+      if (!name) {
+        showAlert('Please enter a bucket name', 'error');
+        return;
+      }
+      try {
+        const { status } = await api(`/${name}`, { method: 'PUT' });
+        if (status === 200) {
+          showAlert('Bucket created successfully!');
+          loadBuckets();
+          loadStats();
+        } else {
+          showAlert('Failed to create bucket', 'error');
+        }
+      } catch (e) {
+        showAlert('Failed to create bucket: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteBucket(name) {
+      if (!confirm(`Delete bucket "${name}"?`)) return;
+      try {
+        const { status } = await api(`/${name}`, { method: 'DELETE' });
+        if (status === 204) {
+          showAlert('Bucket deleted!');
+          loadBuckets();
+          loadStats();
+        } else {
+          showAlert('Failed to delete bucket (may not be empty)', 'error');
+        }
+      } catch (e) {
+        showAlert('Failed to delete bucket: ' + e.message, 'error');
+      }
+    }
+
+    function openBucket(name) {
+      currentBucket = name;
+      document.getElementById('current-bucket').textContent = name;
+      document.getElementById('object-section').classList.remove('hidden');
+      document.getElementById('upload-section').classList.remove('hidden');
+      document.getElementById('breadcrumb').innerHTML = `<a href="#" onclick="closeBucket(); return false;">Buckets</a> / ${name}`;
+      loadObjects();
+    }
+
+    function closeBucket() {
+      currentBucket = null;
+      document.getElementById('object-section').classList.add('hidden');
+      document.getElementById('upload-section').classList.add('hidden');
+      document.getElementById('breadcrumb').innerHTML = '';
+      loadBuckets();
+    }
+
+    async function loadObjects() {
+      if (!currentBucket) return;
+
+      try {
+        const { status, data } = await api(`/${currentBucket}`);
+        if (status !== 200) {
+          document.getElementById('objects-content').innerHTML = '<p class="alert alert-error">Failed to load objects</p>';
+          return;
+        }
+
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(data, 'text/xml');
+        const contents = xml.querySelectorAll('Contents');
+
+        if (contents.length === 0) {
+          document.getElementById('objects-content').innerHTML = '<p>No objects in this bucket.</p>';
+          return;
+        }
+
+        let html = '<table><thead><tr><th>Key</th><th>Size</th><th>Last Modified</th><th>Actions</th></tr></thead><tbody>';
+        contents.forEach(obj => {
+          const key = obj.querySelector('Key').textContent;
+          const size = parseInt(obj.querySelector('Size').textContent);
+          const date = obj.querySelector('LastModified').textContent;
+          html += `
+            <tr>
+              <td>${key}</td>
+              <td>${formatSize(size)}</td>
+              <td>${new Date(date).toLocaleString()}</td>
+              <td>
+                <button class="btn btn-success btn-sm" onclick="downloadObject('${key}')">Download</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteObject('${key}')">Delete</button>
+              </td>
+            </tr>
+          `;
+        });
+        html += '</tbody></table>';
+        document.getElementById('objects-content').innerHTML = html;
+      } catch (e) {
+        console.error('Failed to load objects:', e);
+        document.getElementById('objects-content').innerHTML = '<p class="alert alert-error">Failed to load objects</p>';
+      }
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+      return (bytes / 1024 / 1024 / 1024).toFixed(1) + ' GB';
+    }
+
+    function downloadObject(key) {
+      const url = `${API_BASE}/${currentBucket}/${key}`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = key.split('/').pop();
+      a.setRequestHeader = (name, value) => { };
+      fetch(url, { headers: { 'Authorization': `Bearer ${currentToken}` } })
+        .then(res => res.blob())
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = key.split('/').pop();
+          a.click();
+          URL.revokeObjectURL(url);
+        });
+    }
+
+    async function deleteObject(key) {
+      if (!confirm(`Delete "${key}"?`)) return;
+      try {
+        const { status } = await api(`/${currentBucket}/${key}`, { method: 'DELETE' });
+        if (status === 204) {
+          showAlert('Object deleted!');
+          loadObjects();
+          loadStats();
+        }
+      } catch (e) {
+        showAlert('Failed to delete object: ' + e.message, 'error');
+      }
+    }
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('dragover');
+    });
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handleFileSelect(e.target.files[0]);
+      }
+    });
+
+    function handleFileSelect(file) {
+      selectedFile = file;
+      document.getElementById('selected-file').textContent = `Selected: ${file.name} (${formatSize(file.size)})`;
+      const keyInput = document.getElementById('upload-key');
+      if (!keyInput.value) {
+        keyInput.value = file.name;
+      }
+      document.getElementById('upload-btn').disabled = false;
+    }
+
+    async function uploadFile() {
+      const key = document.getElementById('upload-key').value.trim();
+      if (!key) {
+        showAlert('Please enter an object key', 'error');
+        return;
+      }
+      if (!selectedFile) {
+        showAlert('Please select a file', 'error');
+        return;
+      }
+
+      try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const { status } = await api(`/${currentBucket}/${key}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': selectedFile.type || 'application/octet-stream' },
+            body: e.target.result
+          });
+          if (status === 200) {
+            showAlert('File uploaded successfully!');
+            loadObjects();
+            loadStats();
+            selectedFile = null;
+            document.getElementById('selected-file').textContent = '';
+            document.getElementById('upload-key').value = '';
+            document.getElementById('upload-btn').disabled = true;
+          } else {
+            showAlert('Failed to upload file', 'error');
+          }
+        };
+        reader.readAsArrayBuffer(selectedFile);
+      } catch (e) {
+        showAlert('Failed to upload file: ' + e.message, 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStats();
+      updateTokenDisplay();
+      loadTokens();
+      if (currentToken) {
+        loadBuckets();
+      }
+    });
+
+    setInterval(loadStats, 30000);
+  </script>
+</body>
+
+</html>
