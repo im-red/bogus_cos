@@ -32,12 +32,30 @@ function parsePath(pathname) {
 }
 
 async function handleRequest(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, HEAD, OPTIONS');
+
+  // Dynamically allow requested headers (including x-amz-meta-* headers)
+  const requestedHeaders = req.headers['access-control-request-headers'];
+  if (requestedHeaders) {
+    res.setHeader('Access-Control-Allow-Headers', requestedHeaders);
+  } else {
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, X-Cos-Token, Content-Type');
+  }
+
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+
   const [pathnameRaw, searchString] = req.url.split('?');
   const pathname = decodeURIComponent(pathnameRaw);
   const pathInfo = parsePath(pathname);
   req.query = searchString ? Object.fromEntries(new URLSearchParams(searchString)) : {};
 
-  if (pathname === '/__auth/token' && req.method === 'POST') {
+  // Internal APIs - all prefixed with /__internal__/
+  if (pathname === '/__internal__/auth/token' && req.method === 'POST') {
     const tokenInfo = generateToken();
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
@@ -49,7 +67,7 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (pathname === '/__auth/tokens' && req.method === 'GET') {
+  if (pathname === '/__internal__/auth/tokens' && req.method === 'GET') {
     const tokens = listTokens();
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
@@ -57,15 +75,39 @@ async function handleRequest(req, res) {
     return;
   }
 
-  if (pathname === '/__stats' && req.method === 'GET') {
-    const stats = storage.getStats();
+  if (pathname === '/__internal__/auth/token' && req.method === 'DELETE') {
+    const token = req.query?.token;
+    if (!token) {
+      res.statusCode = 400;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'BadRequest', message: 'Token parameter is required' }));
+      return;
+    }
+    const revoked = revokeToken(token);
+    if (revoked) {
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ success: true, message: 'Token revoked' }));
+    } else {
+      res.statusCode = 404;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'NotFound', message: 'Token not found' }));
+    }
+    return;
+  }
+
+  if (pathname === '/__internal__/stats' && req.method === 'GET') {
+    // Get all tenant IDs from tokens to ensure consistent tenant count
+    const tokens = listTokens();
+    const allTenantIds = tokens.map(t => t.tenantId);
+    const stats = storage.getStats(allTenantIds);
     res.statusCode = 200;
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(stats));
     return;
   }
 
-  if (pathname === '/__portal' || pathname === '/portal') {
+  if (pathname === '/__internal__/portal' || pathname === '/portal') {
     try {
       const html = fs.readFileSync(config.portalPath, 'utf8');
       res.statusCode = 200;

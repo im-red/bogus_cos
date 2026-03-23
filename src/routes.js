@@ -308,6 +308,13 @@ async function handleServiceRequest(req, res) {
     sendXml(res, 200, xmlResponse);
     return;
   }
+
+  if (req.method === 'HEAD') {
+    res.statusCode = 200;
+    res.end();
+    return;
+  }
+
   res.statusCode = 405;
   res.end();
 }

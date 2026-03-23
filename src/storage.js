@@ -271,6 +271,8 @@ class StorageService {
       if (fs.existsSync(objectPath)) {
         fs.unlinkSync(objectPath);
       }
+
+      this.removeEmptyDirs(path.dirname(objectPath), this.getTenantObjectsDir(tenantId));
     } catch (err) {
       console.error('Error deleting object from disk:', err.message);
     }
@@ -278,6 +280,22 @@ class StorageService {
     tenant.objects.delete(objectKey);
     this.scheduleSave(tenantId);
     return { success: true };
+  }
+
+  removeEmptyDirs(dirPath, stopDir) {
+    if (!dirPath || dirPath === stopDir || !dirPath.startsWith(stopDir)) {
+      return;
+    }
+
+    try {
+      const entries = fs.readdirSync(dirPath);
+      if (entries.length === 0) {
+        fs.rmdirSync(dirPath);
+        this.removeEmptyDirs(path.dirname(dirPath), stopDir);
+      }
+    } catch (err) {
+      // Ignore errors - directory may not exist or not be empty
+    }
   }
 
   listObjects(tenantId, bucketName, options = {}) {
@@ -397,21 +415,27 @@ class StorageService {
     }
   }
 
-  getStats() {
+  getStats(allTenantIds = []) {
+    // Combine tenants from storage with all tenant IDs from tokens
+    const allTenants = new Set([...this.tenants.keys(), ...allTenantIds]);
+
     const stats = {
-      tenants: this.tenants.size,
+      tenants: allTenants.size,
       totalBuckets: 0,
       totalObjects: 0,
       tenantsDetail: []
     };
 
-    for (const [tenantId, tenant] of this.tenants) {
-      stats.totalBuckets += tenant.buckets.size;
-      stats.totalObjects += tenant.objects.size;
+    for (const tenantId of allTenants) {
+      const tenant = this.tenants.get(tenantId);
+      const buckets = tenant ? tenant.buckets.size : 0;
+      const objects = tenant ? tenant.objects.size : 0;
+      stats.totalBuckets += buckets;
+      stats.totalObjects += objects;
       stats.tenantsDetail.push({
         tenantId,
-        buckets: tenant.buckets.size,
-        objects: tenant.objects.size
+        buckets,
+        objects
       });
     }
 

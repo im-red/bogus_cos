@@ -291,6 +291,20 @@
       overflow-x: auto;
       font-size: 13px;
     }
+
+    .folder-icon {
+      color: #f39c12;
+      margin-right: 5px;
+    }
+
+    .folder-item {
+      cursor: pointer;
+      color: #667eea;
+    }
+
+    .folder-item:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 
@@ -298,7 +312,7 @@
   <div class="container">
     <header>
       <h1>Bogus COS Portal</h1>
-      <p>Manage your mock COS storage</p>
+      <p>Manage your mock COS storage - Tokens/Tenants as folders</p>
     </header>
 
     <div id="alert-container"></div>
@@ -321,46 +335,32 @@
       </div>
     </div>
 
-    <div class="grid-2">
-      <div class="card">
-        <h2>Authentication</h2>
-        <div id="current-token" class="hidden">
-          <p><strong>Current Token:</strong></p>
-          <div class="token-display" id="token-display"></div>
-          <p><strong>Tenant ID:</strong> <span id="tenant-display"></span></p>
-          <button class="btn btn-danger btn-sm" onclick="clearToken()">Clear Token</button>
-        </div>
-        <div id="no-token">
-          <p>No token set. Generate or enter a token to manage storage.</p>
-          <button class="btn btn-primary" onclick="generateToken()">Generate New Token</button>
-          <p style="margin-top: 15px;">Or enter an existing token:</p>
-          <input type="text" id="manual-token" placeholder="Enter token...">
-          <button class="btn btn-primary" onclick="setManualToken()">Set Token</button>
-        </div>
+    <div class="card">
+      <h2>Token List</h2>
+      <div style="margin-bottom: 15px;">
+        <button class="btn btn-primary" onclick="generateToken()">Generate New Token</button>
+        <button class="btn btn-primary" onclick="loadTokens()" style="margin-left: 10px;">Refresh List</button>
       </div>
-
-      <div class="card">
-        <h2>Active Tokens</h2>
-        <div id="tokens-list"></div>
-        <button class="btn btn-primary btn-sm" onclick="loadTokens()" style="margin-top: 10px;">Refresh List</button>
+      <div id="generated-token" class="hidden"
+        style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border-radius: 6px;">
+        <p><strong>Generated Token:</strong></p>
+        <div class="token-display" id="new-token-display"></div>
+        <p><strong>Tenant ID:</strong> <span id="new-tenant-display"></span></p>
       </div>
+      <div id="tokens-list"></div>
     </div>
 
-    <div class="card" id="bucket-section">
-      <h2>Buckets</h2>
-      <div class="breadcrumb" id="breadcrumb"></div>
-      <div id="buckets-content">
-        <p class="alert alert-error" id="no-auth-message">Please set a token first to view buckets.</p>
+    <div class="card" id="browser-section">
+      <h2>Storage Browser</h2>
+      <div class="breadcrumb" id="breadcrumb"><span class="folder-item" onclick="navigateToRoot()">Root</span></div>
+      <div id="browser-content">
+        <p>Loading...</p>
       </div>
-    </div>
-
-    <div class="card hidden" id="object-section">
-      <h2>Objects in <span id="current-bucket"></span></h2>
-      <div id="objects-content"></div>
     </div>
 
     <div class="card hidden" id="upload-section">
       <h2>Upload Object</h2>
+      <p>Current path: <span id="upload-path"></span></p>
       <input type="text" id="upload-key" placeholder="Object key (e.g., folder/file.txt)">
       <div class="file-upload" id="drop-zone">
         <p>Drag & drop a file here or click to select</p>
@@ -372,12 +372,12 @@
   </div>
 
   <script>
-    let currentToken = localStorage.getItem('bogus_cos_token');
-    let currentTenantId = localStorage.getItem('bogus_cos_tenant_id');
-    let currentBucket = null;
-    let selectedFile = null;
-
     const API_BASE = window.location.origin;
+
+    let currentPath = [];
+    let selectedFile = null;
+    let currentToken = null;
+    let currentBucket = null;
 
     function showAlert(message, type = 'success') {
       const container = document.getElementById('alert-container');
@@ -388,10 +388,10 @@
       setTimeout(() => alert.remove(), 5000);
     }
 
-    async function api(path, options = {}) {
+    async function api(path, options = {}, token = null) {
       const headers = options.headers || {};
-      if (currentToken) {
-        headers['Authorization'] = `Bearer ${currentToken}`;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
       const response = await fetch(API_BASE + path, { ...options, headers });
       const contentType = response.headers.get('content-type');
@@ -403,7 +403,7 @@
 
     async function loadStats() {
       try {
-        const { data } = await api('/__stats');
+        const { data } = await api('/__internal__/stats');
         document.getElementById('stat-tenants').textContent = data.tenants;
         document.getElementById('stat-buckets').textContent = data.totalBuckets;
         document.getElementById('stat-objects').textContent = data.totalObjects;
@@ -414,57 +414,21 @@
 
     async function generateToken() {
       try {
-        const { data } = await api('/__auth/token', { method: 'POST' });
-        currentToken = data.token;
-        currentTenantId = data.tenantId;
-        localStorage.setItem('bogus_cos_token', currentToken);
-        localStorage.setItem('bogus_cos_tenant_id', currentTenantId);
-        updateTokenDisplay();
-        loadBuckets();
+        const { data } = await api('/__internal__/auth/token', { method: 'POST' });
+        document.getElementById('generated-token').classList.remove('hidden');
+        document.getElementById('new-token-display').textContent = data.token;
+        document.getElementById('new-tenant-display').textContent = data.tenantId;
+        loadTokens();
+        loadStats();
         showAlert('Token generated successfully!');
       } catch (e) {
         showAlert('Failed to generate token: ' + e.message, 'error');
       }
     }
 
-    function setManualToken() {
-      const token = document.getElementById('manual-token').value.trim();
-      if (!token) {
-        showAlert('Please enter a token', 'error');
-        return;
-      }
-      currentToken = token;
-      localStorage.setItem('bogus_cos_token', currentToken);
-      updateTokenDisplay();
-      loadBuckets();
-    }
-
-    function clearToken() {
-      currentToken = null;
-      currentTenantId = null;
-      currentBucket = null;
-      localStorage.removeItem('bogus_cos_token');
-      localStorage.removeItem('bogus_cos_tenant_id');
-      updateTokenDisplay();
-      document.getElementById('buckets-content').innerHTML = '<p class="alert alert-error">Please set a token first to view buckets.</p>';
-      document.getElementById('object-section').classList.add('hidden');
-      document.getElementById('upload-section').classList.add('hidden');
-      document.getElementById('breadcrumb').innerHTML = '';
-    }
-
-    function updateTokenDisplay() {
-      const hasToken = !!currentToken;
-      document.getElementById('current-token').classList.toggle('hidden', !hasToken);
-      document.getElementById('no-token').classList.toggle('hidden', hasToken);
-      if (hasToken) {
-        document.getElementById('token-display').textContent = currentToken;
-        document.getElementById('tenant-display').textContent = currentTenantId || 'Unknown';
-      }
-    }
-
     async function loadTokens() {
       try {
-        const { data } = await api('/__auth/tokens');
+        const { data } = await api('/__internal__/auth/tokens');
         const container = document.getElementById('tokens-list');
         if (data.tokens.length === 0) {
           container.innerHTML = '<p>No active tokens</p>';
@@ -477,7 +441,7 @@
               <div>Tenant: <code>${t.tenantId}</code></div>
               <div>Created: ${new Date(t.createdAt).toLocaleString()}</div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="useToken('${t.token}', '${t.tenantId}')">Use</button>
+            <button class="btn btn-danger" onclick="deleteToken('${t.token}')">Delete</button>
           </div>
         `).join('');
       } catch (e) {
@@ -485,27 +449,122 @@
       }
     }
 
-    function useToken(token, tenantId) {
-      currentToken = token;
-      currentTenantId = tenantId;
-      currentBucket = null;
-      localStorage.setItem('bogus_cos_token', token);
-      localStorage.setItem('bogus_cos_tenant_id', tenantId);
-      updateTokenDisplay();
-      document.getElementById('object-section').classList.add('hidden');
-      document.getElementById('upload-section').classList.add('hidden');
-      document.getElementById('breadcrumb').innerHTML = '';
-      loadBuckets();
-      showAlert('Token activated!');
+    async function deleteToken(token) {
+      if (!confirm('Are you sure you want to delete this token? This will also delete all associated buckets and objects.')) {
+        return;
+      }
+      try {
+        const { status } = await api(`/__internal__/auth/token?token=${encodeURIComponent(token)}`, { method: 'DELETE' });
+        if (status === 200) {
+          showAlert('Token deleted successfully!');
+          loadTokens();
+          loadStats();
+          if (currentPath[0] === token) {
+            navigateToRoot();
+          }
+        } else {
+          showAlert('Failed to delete token', 'error');
+        }
+      } catch (e) {
+        showAlert('Failed to delete token: ' + e.message, 'error');
+      }
     }
 
-    async function loadBuckets() {
-      if (!currentToken) return;
+    function navigateToRoot() {
+      currentPath = [];
+      currentToken = null;
+      currentBucket = null;
+      renderBrowser();
+    }
 
+    function navigateToFolder(name, type) {
+      if (type === 'tenant') {
+        currentPath = [name];
+        currentToken = name;
+        currentBucket = null;
+      } else if (type === 'bucket') {
+        currentPath = [currentPath[0], name];
+        currentBucket = name;
+      }
+      renderBrowser();
+    }
+
+    function navigateUp() {
+      if (currentPath.length > 1) {
+        currentPath.pop();
+        currentBucket = null;
+      } else {
+        currentPath = [];
+        currentToken = null;
+        currentBucket = null;
+      }
+      renderBrowser();
+    }
+
+    function updateBreadcrumb() {
+      const breadcrumb = document.getElementById('breadcrumb');
+      if (currentPath.length === 0) {
+        breadcrumb.innerHTML = '<span class="folder-item" onclick="navigateToRoot()">Root</span>';
+      } else {
+        let html = '<span class="folder-item" onclick="navigateToRoot()">Root</span>';
+        currentPath.forEach((part, index) => {
+          html += ` / ${part}`;
+        });
+        breadcrumb.innerHTML = html;
+      }
+    }
+
+    async function renderBrowser() {
+      updateBreadcrumb();
+      const content = document.getElementById('browser-content');
+      const uploadSection = document.getElementById('upload-section');
+
+      if (currentPath.length === 0) {
+        await renderTenants(content);
+        uploadSection.classList.add('hidden');
+      } else if (currentPath.length === 1) {
+        await renderBuckets(content, currentPath[0]);
+        uploadSection.classList.add('hidden');
+      } else if (currentPath.length === 2) {
+        await renderObjects(content, currentPath[0], currentPath[1]);
+        uploadSection.classList.remove('hidden');
+        document.getElementById('upload-path').textContent = `${currentPath[0]}/${currentPath[1]}`;
+      }
+    }
+
+    async function renderTenants(content) {
       try {
-        const { status, data } = await api('/');
+        const { data } = await api('/__internal__/auth/tokens');
+        if (data.tokens.length === 0) {
+          content.innerHTML = '<p>No tenants available. Generate a token to create a tenant.</p>';
+          return;
+        }
+
+        let html = '<table><thead><tr><th>Tenant (Token)</th><th>Tenant ID</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+        data.tokens.forEach(t => {
+          html += `
+            <tr>
+              <td><span class="folder-item" onclick="navigateToFolder('${t.token}', 'tenant')"><span class="folder-icon">📁</span>${t.token.substring(0, 16)}...</span></td>
+              <td><code>${t.tenantId}</code></td>
+              <td>${new Date(t.createdAt).toLocaleString()}</td>
+              <td>
+                <button class="btn btn-primary btn-sm" onclick="navigateToFolder('${t.token}', 'tenant')">Open</button>
+              </td>
+            </tr>
+          `;
+        });
+        html += '</tbody></table>';
+        content.innerHTML = html;
+      } catch (e) {
+        content.innerHTML = '<p class="alert alert-error">Failed to load tenants</p>';
+      }
+    }
+
+    async function renderBuckets(content, token) {
+      try {
+        const { status, data } = await api('/', {}, token);
         if (status !== 200) {
-          document.getElementById('buckets-content').innerHTML = '<p class="alert alert-error">Failed to load buckets</p>';
+          content.innerHTML = '<p class="alert alert-error">Failed to load buckets</p>';
           return;
         }
 
@@ -513,105 +572,42 @@
         const xml = parser.parseFromString(data, 'text/xml');
         const buckets = xml.querySelectorAll('Bucket');
 
+        let html = '<button class="btn btn-primary btn-sm" onclick="navigateUp()">← Back</button>';
+        html += '<div style="margin-top: 15px;"><input type="text" id="new-bucket-name" placeholder="New bucket name"><button class="btn btn-primary" onclick="createBucket()">Create Bucket</button></div>';
+
         if (buckets.length === 0) {
-          document.getElementById('buckets-content').innerHTML = `
-            <p>No buckets found. Create one to get started.</p>
-            <div style="margin-top: 15px;">
-              <input type="text" id="new-bucket-name" placeholder="Bucket name">
-              <button class="btn btn-primary" onclick="createBucket()">Create Bucket</button>
-            </div>
-          `;
+          html += '<p style="margin-top: 15px;">No buckets in this tenant.</p>';
+          content.innerHTML = html;
           return;
         }
 
-        let html = '<table><thead><tr><th>Bucket Name</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
+        html += '<table style="margin-top: 15px;"><thead><tr><th>Bucket Name</th><th>Created</th><th>Actions</th></tr></thead><tbody>';
         buckets.forEach(bucket => {
           const name = bucket.querySelector('Name').textContent;
           const date = bucket.querySelector('CreationDate').textContent;
           html += `
             <tr>
-              <td><a href="#" onclick="openBucket('${name}'); return false;">${name}</a></td>
+              <td><span class="folder-item" onclick="navigateToFolder('${name}', 'bucket')"><span class="folder-icon">📁</span>${name}</span></td>
               <td>${new Date(date).toLocaleString()}</td>
               <td>
+                <button class="btn btn-primary btn-sm" onclick="navigateToFolder('${name}', 'bucket')">Open</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteBucket('${name}')">Delete</button>
               </td>
             </tr>
           `;
         });
         html += '</tbody></table>';
-        html += `
-          <div style="margin-top: 15px;">
-            <input type="text" id="new-bucket-name" placeholder="New bucket name">
-            <button class="btn btn-primary" onclick="createBucket()">Create Bucket</button>
-          </div>
-        `;
-        document.getElementById('buckets-content').innerHTML = html;
+        content.innerHTML = html;
       } catch (e) {
-        console.error('Failed to load buckets:', e);
-        document.getElementById('buckets-content').innerHTML = '<p class="alert alert-error">Failed to load buckets</p>';
+        content.innerHTML = '<p class="alert alert-error">Failed to load buckets</p>';
       }
     }
 
-    async function createBucket() {
-      const name = document.getElementById('new-bucket-name').value.trim();
-      if (!name) {
-        showAlert('Please enter a bucket name', 'error');
-        return;
-      }
+    async function renderObjects(content, token, bucketName) {
       try {
-        const { status } = await api(`/${name}`, { method: 'PUT' });
-        if (status === 200) {
-          showAlert('Bucket created successfully!');
-          loadBuckets();
-          loadStats();
-        } else {
-          showAlert('Failed to create bucket', 'error');
-        }
-      } catch (e) {
-        showAlert('Failed to create bucket: ' + e.message, 'error');
-      }
-    }
-
-    async function deleteBucket(name) {
-      if (!confirm(`Delete bucket "${name}"?`)) return;
-      try {
-        const { status } = await api(`/${name}`, { method: 'DELETE' });
-        if (status === 204) {
-          showAlert('Bucket deleted!');
-          loadBuckets();
-          loadStats();
-        } else {
-          showAlert('Failed to delete bucket (may not be empty)', 'error');
-        }
-      } catch (e) {
-        showAlert('Failed to delete bucket: ' + e.message, 'error');
-      }
-    }
-
-    function openBucket(name) {
-      currentBucket = name;
-      document.getElementById('current-bucket').textContent = name;
-      document.getElementById('object-section').classList.remove('hidden');
-      document.getElementById('upload-section').classList.remove('hidden');
-      document.getElementById('breadcrumb').innerHTML = `<a href="#" onclick="closeBucket(); return false;">Buckets</a> / ${name}`;
-      loadObjects();
-    }
-
-    function closeBucket() {
-      currentBucket = null;
-      document.getElementById('object-section').classList.add('hidden');
-      document.getElementById('upload-section').classList.add('hidden');
-      document.getElementById('breadcrumb').innerHTML = '';
-      loadBuckets();
-    }
-
-    async function loadObjects() {
-      if (!currentBucket) return;
-
-      try {
-        const { status, data } = await api(`/${currentBucket}`);
+        const { status, data } = await api(`/${bucketName}`, {}, token);
         if (status !== 200) {
-          document.getElementById('objects-content').innerHTML = '<p class="alert alert-error">Failed to load objects</p>';
+          content.innerHTML = '<p class="alert alert-error">Failed to load objects</p>';
           return;
         }
 
@@ -619,12 +615,15 @@
         const xml = parser.parseFromString(data, 'text/xml');
         const contents = xml.querySelectorAll('Contents');
 
+        let html = '<button class="btn btn-primary btn-sm" onclick="navigateUp()">← Back</button>';
+
         if (contents.length === 0) {
-          document.getElementById('objects-content').innerHTML = '<p>No objects in this bucket.</p>';
+          html += '<p style="margin-top: 15px;">No objects in this bucket.</p>';
+          content.innerHTML = html;
           return;
         }
 
-        let html = '<table><thead><tr><th>Key</th><th>Size</th><th>Last Modified</th><th>Actions</th></tr></thead><tbody>';
+        html += '<table style="margin-top: 15px;"><thead><tr><th>Key</th><th>Size</th><th>Last Modified</th><th>Actions</th></tr></thead><tbody>';
         contents.forEach(obj => {
           const key = obj.querySelector('Key').textContent;
           const size = parseInt(obj.querySelector('Size').textContent);
@@ -642,10 +641,45 @@
           `;
         });
         html += '</tbody></table>';
-        document.getElementById('objects-content').innerHTML = html;
+        content.innerHTML = html;
       } catch (e) {
-        console.error('Failed to load objects:', e);
-        document.getElementById('objects-content').innerHTML = '<p class="alert alert-error">Failed to load objects</p>';
+        content.innerHTML = '<p class="alert alert-error">Failed to load objects</p>';
+      }
+    }
+
+    async function createBucket() {
+      const name = document.getElementById('new-bucket-name').value.trim();
+      if (!name) {
+        showAlert('Please enter a bucket name', 'error');
+        return;
+      }
+      try {
+        const { status } = await api(`/${name}`, { method: 'PUT' }, currentToken);
+        if (status === 200) {
+          showAlert('Bucket created successfully!');
+          renderBrowser();
+          loadStats();
+        } else {
+          showAlert('Failed to create bucket', 'error');
+        }
+      } catch (e) {
+        showAlert('Failed to create bucket: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteBucket(name) {
+      if (!confirm(`Delete bucket "${name}"?`)) return;
+      try {
+        const { status } = await api(`/${name}`, { method: 'DELETE' }, currentToken);
+        if (status === 204) {
+          showAlert('Bucket deleted!');
+          renderBrowser();
+          loadStats();
+        } else {
+          showAlert('Failed to delete bucket (may not be empty)', 'error');
+        }
+      } catch (e) {
+        showAlert('Failed to delete bucket: ' + e.message, 'error');
       }
     }
 
@@ -658,10 +692,6 @@
 
     function downloadObject(key) {
       const url = `${API_BASE}/${currentBucket}/${key}`;
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = key.split('/').pop();
-      a.setRequestHeader = (name, value) => { };
       fetch(url, { headers: { 'Authorization': `Bearer ${currentToken}` } })
         .then(res => res.blob())
         .then(blob => {
@@ -677,10 +707,10 @@
     async function deleteObject(key) {
       if (!confirm(`Delete "${key}"?`)) return;
       try {
-        const { status } = await api(`/${currentBucket}/${key}`, { method: 'DELETE' });
+        const { status } = await api(`/${currentBucket}/${key}`, { method: 'DELETE' }, currentToken);
         if (status === 204) {
           showAlert('Object deleted!');
-          loadObjects();
+          renderBrowser();
           loadStats();
         }
       } catch (e) {
@@ -740,10 +770,10 @@
             method: 'PUT',
             headers: { 'Content-Type': selectedFile.type || 'application/octet-stream' },
             body: e.target.result
-          });
+          }, currentToken);
           if (status === 200) {
             showAlert('File uploaded successfully!');
-            loadObjects();
+            renderBrowser();
             loadStats();
             selectedFile = null;
             document.getElementById('selected-file').textContent = '';
@@ -761,11 +791,8 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       loadStats();
-      updateTokenDisplay();
       loadTokens();
-      if (currentToken) {
-        loadBuckets();
-      }
+      renderBrowser();
     });
 
     setInterval(loadStats, 30000);

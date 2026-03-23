@@ -5,11 +5,13 @@ A lightweight mock COS (Cloud Object Storage) service for local development and 
 ## Features
 
 - **Full COS API Compatibility** - Supports typical COS operations
+- **Multi-Tenant Support** - Each token gets its own isolated storage namespace
 - **UUID Authentication** - Simple token-based authentication
 - **Disk Persistence** - Data survives server restarts
 - **Serverless Ready** - Exportable handler for AWS Lambda / Tencent Cloud SCF
 - **Zero Configuration** - Works out of the box with sensible defaults
 - **Lightweight** - Minimal dependencies, fast startup
+- **Web Portal** - Built-in web UI for browsing storage at `/__internal__/portal`
 
 ## Installation
 
@@ -36,11 +38,18 @@ npm start
 # Data directory: /path/to/bogus_cos/data
 ```
 
+### Run Tests
+
+```bash
+# Run the test suite
+npm test
+```
+
 ### Get an Authentication Token
 
 ```bash
-curl -X POST http://localhost:9000/__auth/token
-# Response: {"token":"your-uuid-token"}
+curl -X POST http://localhost:9000/__internal__/auth/token
+# Response: {"token":"your-uuid-token","tenantId":"tenant-uuid","createdAt":"2024-01-01T00:00:00.000Z"}
 ```
 
 ### Create a Bucket
@@ -83,17 +92,23 @@ curl -X DELETE http://localhost:9000/my-bucket/hello.txt \
 
 ## API Reference
 
-### Authentication Endpoints
+### Internal/Admin Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/__auth/token` | Generate a new authentication token |
+| POST | `/__internal__/auth/token` | Generate a new authentication token |
+| GET | `/__internal__/auth/tokens` | List all tokens (for debugging) |
+| DELETE | `/__internal__/auth/token?token=<token>` | Revoke/delete a token |
+| GET | `/__internal__/stats` | Get server statistics (tenants, buckets, objects) |
+| GET | `/__internal__/portal` | Web portal for browsing storage (HTML page) |
+| GET | `/portal` | Alias for web portal |
 
 ### Service Operations
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/` | List all buckets |
+| HEAD | `/` | Service health check |
 
 ### Bucket Operations
 
@@ -181,20 +196,27 @@ COS_TOKEN=dev-token-12345 npm start
 
 ## Data Persistence
 
-Data is automatically persisted to disk:
+Data is automatically persisted to disk with multi-tenant support:
 
 ```
 data/
-├── metadata.json      # Buckets and object metadata
-└── objects/
-    └── <bucket>/
-        └── <key>      # Object data files
+├── tokens.json           # Token to tenant mapping
+└── <tenant-id>/
+    ├── metadata.json     # Buckets and object metadata for this tenant
+    └── objects/
+        └── <bucket>/
+            └── <key>     # Object data files
 ```
 
-- **metadata.json** - Stores bucket information and object metadata (name, size, content-type, etc.)
-- **objects/** - Stores the actual file contents in a directory structure matching bucket/key
+- **tokens.json** - Maps authentication tokens to tenant IDs
+- **metadata.json** (per tenant) - Stores bucket information and object metadata (name, size, content-type, etc.)
+- **objects/** (per tenant) - Stores the actual file contents in a directory structure matching bucket/key
 
 Data is loaded automatically on startup and saved after each modification (with debouncing).
+
+### Automatic Cleanup
+
+When an object is deleted, empty parent directories are automatically removed up to the objects root, keeping the storage clean.
 
 ## Serverless Usage
 
@@ -333,7 +355,9 @@ Error Response:
 
 ```json
 {
-  "token": "550e8400-e29b-41d4-a716-446655440000"
+  "token": "550e8400-e29b-41d4-a716-446655440000",
+  "tenantId": "660e8400-e29b-41d4-a716-446655440001",
+  "createdAt": "2024-01-01T00:00:00.000Z"
 }
 ```
 
